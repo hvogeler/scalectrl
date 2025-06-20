@@ -1,0 +1,1 @@
+void bt_connect_scale(void);

@@ -11,6 +11,7 @@ idf_component_register(
       "ui/fonts/roboto_bold_40.c"      
       "ui/fonts/roboto_bold_60.c"      
       "ui/fonts/roboto_regular_20.c"      
+      "scale/ble.c"
     INCLUDE_DIRS 
       "."
       "ui/fonts"
@@ -20,4 +21,6 @@ idf_component_register(
         driver 
         esp_lcd 
         esp_lcd_touch_cst816s
+        bt
+        nvs_flash
 )

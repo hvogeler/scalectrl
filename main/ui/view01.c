@@ -6,6 +6,7 @@
 #include "roboto_bold_40.h"
 #include "roboto_bold_60.h"
 #include "roboto_regular_20.h"
+#include "scale/ble.h"
 
 static const char *TAG = "view01";
 
@@ -14,7 +15,7 @@ static lv_obj_t *lbl_gr, *lbl_timer, *lbl_seconds;
 static lv_obj_t *btn_connect, *btn_tare, *btn_reset;
 static lv_obj_t *lbl_connect, *lbl_tare, *lbl_reset;
 static lv_style_t style_pane;
-static bool on = true;
+static bool on = false;
 
 bool is_on()
 {
@@ -28,6 +29,10 @@ void toggle_on()
     {
         lv_label_set_text(lbl_connect, is_on() ? "OFF" : "ON");
         lvgl_unlock();
+    }
+    if (on) {
+
+        bt_connect_scale();
     }
 }
 
