@@ -21,6 +21,6 @@ idf_component_register(
         driver 
         esp_lcd 
         esp_lcd_touch_cst816s
-        bt
         nvs_flash
+        bt
 )

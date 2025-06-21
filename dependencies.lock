@@ -34,10 +34,17 @@ dependencies:
       registry_url: https://components.espressif.com/
       type: service
     version: 9.3.0
+  nimble_central_utils:
+    dependencies: []
+    source:
+      path: /Users/hvo/Esp/v5.4.1/Esp-idf/examples/bluetooth/nimble/common/nimble_central_utils
+      type: local
+    version: '*'
 direct_dependencies:
 - espressif/esp_lcd_touch_cst816s
 - idf
 - lvgl/lvgl
-manifest_hash: 3196a929d3ca8af8d94370c95b31be3d45ffb6920776ef6b50c10f448d31701f
+- nimble_central_utils
+manifest_hash: 6bcf1ba1e009f1ddc83a3152064574213f1dbf65ede1bacb074e6053de1008c5
 target: esp32s3
 version: 2.0.0
