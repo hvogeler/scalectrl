@@ -20,13 +20,16 @@ void reset_cb()
         lvgl_unlock();
     }
 }
+void write_char(uint8_t write_data[]);
 
 void tare_cb()
 {
+    uint8_t tare[] = {0x03, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x0c};
     if (lvgl_lock(-1))
     {
         weight = 0;
         set_weight(weight);
+        write_char(tare);
         lvgl_unlock();
     }
 }

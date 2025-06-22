@@ -10,6 +10,8 @@
 
 static const char *TAG = "view01";
 void bt_connect_scale(void);
+void disconnect_from_scale(void);
+
 static lv_obj_t *lbl_weight;
 static lv_obj_t *lbl_gr, *lbl_timer, *lbl_seconds;
 static lv_obj_t *btn_connect, *btn_tare, *btn_reset;
@@ -31,8 +33,9 @@ void toggle_on()
         lvgl_unlock();
     }
     if (on) {
-
         bt_connect_scale();
+    } else {
+        disconnect_from_scale();
     }
 }
 

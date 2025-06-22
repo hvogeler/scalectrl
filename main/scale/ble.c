@@ -29,7 +29,8 @@
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 
-#define REMOTE_SERVICE_UUID 0x00FF
+#define SCALE_SERVICE_UUID 0xFFF0
+#define SET_CHAR_UUID 0x36F5
 #define REMOTE_NOTIFY_CHAR_UUID 0xFF01
 #define PROFILE_NUM 1
 #define PROFILE_A_APP_ID 0
@@ -43,6 +44,7 @@ static bool connect = false;
 static bool get_server = false;
 static esp_gattc_char_elem_t *char_elem_result = NULL;
 static esp_gattc_descr_elem_t *descr_elem_result = NULL;
+static uint16_t set_char_handle = 0;
 
 /* Declare static functions */
 static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param);
@@ -52,16 +54,24 @@ static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_
 char *TAG = "ble";
 
 /*** The UUID of the service containing characteristics: 0000fff0-0000-1000-8000-00805f9b34fb ***/
+
 // static const esp_bt_uuid_t scale_svc_uuid = {
 //     .len = ESP_UUID_LEN_128,
 //     .uuid = {
-//         0x00, 0x00, 0xff, 0xf0,
-//                         0x00, 0x00,
-//                         0x10, 0x00,
-//                         0x80, 0x00,
-//                         0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb
+//         0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00,
+//         0x00, 0x80,
+//         0x00, 0x10,
+//         0x00, 0x00,
+//         0xf0, 0xff, 0x00, 0x00
 //     }
+//};
+
+// static const uint8_t set_char_uuid128[] = {
+//     0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80,  // Last 8 bytes reversed
+//     0x00, 0x10, 0x00, 0x00,                           // Middle 4 bytes reversed
+//     0xf5, 0x36, 0x00, 0x00                            // First 4 bytes reversed
 // };
+
 //     BLE_UUID128_DECLARE(0x00, 0x00, 0xff, 0xf0,
 //                         0x00, 0x00,
 //                         0x10, 0x00,
@@ -84,17 +94,17 @@ char *TAG = "ble";
 //                         0x80, 0x00,
 //                         0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb);
 
-static esp_bt_uuid_t remote_filter_service_uuid = {
-    .len = ESP_UUID_LEN_16,
-    .uuid = {
-        .uuid16 = REMOTE_SERVICE_UUID,
-    },
-};
+// static esp_bt_uuid_t remote_filter_service_uuid = {
+//     .len = ESP_UUID_LEN_16,
+//     .uuid = {
+//         .uuid16 = REMOTE_SERVICE_UUID,
+//     },
+// };
 
-static esp_bt_uuid_t remote_filter_char_uuid = {
+static esp_bt_uuid_t set_char_uuid = {
     .len = ESP_UUID_LEN_16,
     .uuid = {
-        .uuid16 = REMOTE_NOTIFY_CHAR_UUID,
+        .uuid16 = SET_CHAR_UUID,
     },
 };
 
@@ -132,6 +142,19 @@ static struct gattc_profile_inst gl_profile_tab[PROFILE_NUM] = {
         .gattc_if = ESP_GATT_IF_NONE, /* Not get the gatt_if, so initial is ESP_GATT_IF_NONE */
     },
 };
+
+void uuid128_to_string(const uint8_t *uuid128, char *str_buf, size_t buf_size)
+{
+    // UUID128 format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+    // ESP-IDF stores UUID128 in little-endian format
+    snprintf(str_buf, buf_size,
+             "%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
+             uuid128[15], uuid128[14], uuid128[13], uuid128[12],                      // bytes 15-12
+             uuid128[11], uuid128[10],                                                // bytes 11-10
+             uuid128[9], uuid128[8],                                                  // bytes 9-8
+             uuid128[7], uuid128[6],                                                  // bytes 7-6
+             uuid128[5], uuid128[4], uuid128[3], uuid128[2], uuid128[1], uuid128[0]); // bytes 5-0
+}
 
 static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param)
 {
@@ -175,7 +198,7 @@ static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_
             break;
         }
         ESP_LOGI(TAG, "Service discover complete, conn_id %d", param->dis_srvc_cmpl.conn_id);
-        esp_ble_gattc_search_service(gattc_if, param->dis_srvc_cmpl.conn_id, &remote_filter_service_uuid);
+        esp_ble_gattc_search_service(gattc_if, param->dis_srvc_cmpl.conn_id, NULL);
         break;
     case ESP_GATTC_CFG_MTU_EVT:
         ESP_LOGI(TAG, "MTU exchange, status %d, MTU %d", param->cfg_mtu.status, param->cfg_mtu.mtu);
@@ -184,13 +207,33 @@ static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_
     {
         ESP_LOGI(TAG, "Service search result, conn_id = %x, is primary service %d", p_data->search_res.conn_id, p_data->search_res.is_primary);
         ESP_LOGI(TAG, "start handle %d, end handle %d, current handle value %d", p_data->search_res.start_handle, p_data->search_res.end_handle, p_data->search_res.srvc_id.inst_id);
-        if (p_data->search_res.srvc_id.uuid.len == ESP_UUID_LEN_16 && p_data->search_res.srvc_id.uuid.uuid.uuid16 == REMOTE_SERVICE_UUID)
+        esp_bt_uuid_t *uuid = &p_data->search_res.srvc_id.uuid;
+
+        if (uuid->len == ESP_UUID_LEN_16)
         {
-            ESP_LOGI(TAG, "Service found");
+            ESP_LOGI(TAG, "UUID16: 0x%04x", uuid->uuid.uuid16);
+        }
+
+        if (uuid->len == ESP_UUID_LEN_32)
+        {
+            ESP_LOGI(TAG, "UUID32: 0x%08lx", uuid->uuid.uuid32);
+        }
+
+        if (uuid->len == ESP_UUID_LEN_128)
+        {
+            char uuid128_str[37] = {0};
+            uuid128_to_string(uuid->uuid.uuid128, uuid128_str, sizeof(uuid128_str));
+            ESP_LOGI(TAG, "UUID128 (LE): %s", uuid128_str);
+        }
+        if (p_data->search_res.srvc_id.uuid.len == ESP_UUID_LEN_16 && p_data->search_res.srvc_id.uuid.uuid.uuid16 == SCALE_SERVICE_UUID)
+        {
+            ESP_LOGI(TAG, "*** Service found ***");
             get_server = true;
             gl_profile_tab[PROFILE_A_APP_ID].service_start_handle = p_data->search_res.start_handle;
             gl_profile_tab[PROFILE_A_APP_ID].service_end_handle = p_data->search_res.end_handle;
             ESP_LOGI(TAG, "UUID16: %x", p_data->search_res.srvc_id.uuid.uuid.uuid16);
+
+            // Get all characteristics
         }
         break;
     }
@@ -231,6 +274,7 @@ static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_
 
             if (count > 0)
             {
+                ESP_LOGI(TAG, "Found %d characteristics", count);
                 char_elem_result = (esp_gattc_char_elem_t *)malloc(sizeof(esp_gattc_char_elem_t) * count);
                 if (!char_elem_result)
                 {
@@ -243,7 +287,7 @@ static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_
                                                             p_data->search_cmpl.conn_id,
                                                             gl_profile_tab[PROFILE_A_APP_ID].service_start_handle,
                                                             gl_profile_tab[PROFILE_A_APP_ID].service_end_handle,
-                                                            remote_filter_char_uuid,
+                                                            set_char_uuid,
                                                             char_elem_result,
                                                             &count);
                     if (status != ESP_GATT_OK)
@@ -253,13 +297,13 @@ static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_
                         char_elem_result = NULL;
                         break;
                     }
-
+                    set_char_handle = char_elem_result[0].char_handle;
                     /*  Every service have only one char in our 'ESP_GATTS_DEMO' demo, so we used first 'char_elem_result' */
-                    if (count > 0 && (char_elem_result[0].properties & ESP_GATT_CHAR_PROP_BIT_NOTIFY))
-                    {
-                        gl_profile_tab[PROFILE_A_APP_ID].char_handle = char_elem_result[0].char_handle;
-                        esp_ble_gattc_register_for_notify(gattc_if, gl_profile_tab[PROFILE_A_APP_ID].remote_bda, char_elem_result[0].char_handle);
-                    }
+                    // if (count > 0 && (char_elem_result[0].properties & ESP_GATT_CHAR_PROP_BIT_NOTIFY))
+                    // {
+                    //     gl_profile_tab[PROFILE_A_APP_ID].char_handle = char_elem_result[0].char_handle;
+                    //     esp_ble_gattc_register_for_notify(gattc_if, gl_profile_tab[PROFILE_A_APP_ID].remote_bda, char_elem_result[0].char_handle);
+                    // }
                 }
                 /* free char_elem_result */
                 free(char_elem_result);
@@ -608,21 +652,24 @@ void bt_connect_scale(void)
     }
 
     // Register the callback function to the gattc module
-    // ret = esp_ble_gattc_register_callback(esp_gattc_cb);
-    // if(ret){
-    //     ESP_LOGE(TAG, "%s gattc register failed, error code = %x", __func__, ret);
-    //     return;
-    // }
+    ret = esp_ble_gattc_register_callback(esp_gattc_cb);
+    if (ret)
+    {
+        ESP_LOGE(TAG, "%s gattc register failed, error code = %x", __func__, ret);
+        return;
+    }
 
-    // ret = esp_ble_gattc_app_register(PROFILE_A_APP_ID);
-    // if (ret){
-    //     ESP_LOGE(TAG, "%s gattc app register failed, error code = %x", __func__, ret);
-    // }
+    ret = esp_ble_gattc_app_register(PROFILE_A_APP_ID);
+    if (ret)
+    {
+        ESP_LOGE(TAG, "%s gattc app register failed, error code = %x", __func__, ret);
+    }
 
-    // esp_err_t local_mtu_ret = esp_ble_gatt_set_local_mtu(500);
-    // if (local_mtu_ret){
-    //     ESP_LOGE(TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
-    // }
+    esp_err_t local_mtu_ret = esp_ble_gatt_set_local_mtu(500);
+    if (local_mtu_ret)
+    {
+        ESP_LOGE(TAG, "set local  MTU failed, error code = %x", local_mtu_ret);
+    }
 
     ret = esp_ble_gap_set_scan_params(&ble_scan_params);
     if (ret)
@@ -648,4 +695,48 @@ void bt_connect_scale(void)
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     */
+}
+
+void disconnect_from_scale(void)
+{
+    if (connect && gl_profile_tab[PROFILE_A_APP_ID].conn_id != 0)
+    {
+        ESP_LOGI(TAG, "Disconnecting from device...");
+
+        esp_err_t ret = esp_ble_gattc_close(
+            gl_profile_tab[PROFILE_A_APP_ID].gattc_if,
+            gl_profile_tab[PROFILE_A_APP_ID].conn_id);
+
+        if (ret != ESP_OK)
+        {
+            ESP_LOGE(TAG, "Disconnect failed: %s", esp_err_to_name(ret));
+        }
+        else
+        {
+            ESP_LOGI(TAG, "Disconnect request sent");
+        }
+    }
+    else
+    {
+        ESP_LOGW(TAG, "Not connected to any device");
+    }
+}
+
+void write_char(uint8_t write_data[])
+{
+    if (set_char_handle != 0)
+    {
+        esp_ble_gattc_write_char(
+            gl_profile_tab[PROFILE_A_APP_ID].gattc_if,
+            gl_profile_tab[PROFILE_A_APP_ID].conn_id,
+            set_char_handle,
+            sizeof(write_data),
+            write_data,
+            ESP_GATT_WRITE_TYPE_RSP,
+            ESP_GATT_AUTH_REQ_NONE);
+    }
+    else
+    {
+        ESP_LOGE(TAG, "Trying to write to set characteristic before characteristic been discovered");
+    }
 }
