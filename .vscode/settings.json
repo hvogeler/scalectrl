@@ -25,7 +25,8 @@
     "ble.h": "c",
     "nvs_flash.h": "c",
     "esp_central.h": "c",
-    "ble_uuid.h": "c"
+    "ble_uuid.h": "c",
+    "esp_gap_ble_api.h": "c"
   },
   "idf.flashType": "UART"
 }
