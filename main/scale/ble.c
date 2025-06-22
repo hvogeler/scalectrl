@@ -28,10 +28,10 @@
 #include "esp_gatt_common_api.h"
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
+#include "ble.h"
 
 #define SCALE_SERVICE_UUID 0xFFF0
 #define SET_CHAR_UUID 0x36F5
-#define REMOTE_NOTIFY_CHAR_UUID 0xFF01
 #define PROFILE_NUM 1
 #define PROFILE_A_APP_ID 0
 #define INVALID_HANDLE 0
@@ -46,10 +46,14 @@ static esp_gattc_char_elem_t *char_elem_result = NULL;
 static esp_gattc_descr_elem_t *descr_elem_result = NULL;
 static uint16_t set_char_handle = 0;
 
+static uint8_t tare[] = {0x03, 0x0f, 0x00, 0x00, 0x00, 0x00, 0x0c};
+static uint8_t led_on_gram[] = {0x03, 0x0a, 0x01, 0x01, 0x00, 0x00, 0x09};
+
 /* Declare static functions */
 static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *param);
 static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param);
 static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param);
+void write_char(uint8_t write_data[]);
 
 char *TAG = "ble";
 
@@ -298,6 +302,9 @@ static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_
                         break;
                     }
                     set_char_handle = char_elem_result[0].char_handle;
+                    scale_tare();
+                    scale_led_on_gram();
+                    scale_tare();
                     /*  Every service have only one char in our 'ESP_GATTS_DEMO' demo, so we used first 'char_elem_result' */
                     // if (count > 0 && (char_elem_result[0].properties & ESP_GATT_CHAR_PROP_BIT_NOTIFY))
                     // {
@@ -699,7 +706,7 @@ void bt_connect_scale(void)
 
 void disconnect_from_scale(void)
 {
-    if (connect && gl_profile_tab[PROFILE_A_APP_ID].conn_id != 0)
+    if (connect)
     {
         ESP_LOGI(TAG, "Disconnecting from device...");
 
@@ -739,4 +746,14 @@ void write_char(uint8_t write_data[])
     {
         ESP_LOGE(TAG, "Trying to write to set characteristic before characteristic been discovered");
     }
+}
+
+void scale_tare()
+{
+    write_char(tare);
+}
+
+void scale_led_on_gram()
+{
+    write_char(led_on_gram);
 }

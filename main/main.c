@@ -6,6 +6,7 @@
 #include "display/wavesharelcd2/display_init.h"
 #include "lvgl/lvgl_init.h"
 #include "ui/view01.h"
+#include "scale/ble.h"
 
 static const char *TAG = "scalectrl";
 static int weight = 0;
@@ -20,7 +21,7 @@ void reset_cb()
         lvgl_unlock();
     }
 }
-void write_char(uint8_t write_data[]);
+
 
 void tare_cb()
 {
@@ -29,7 +30,7 @@ void tare_cb()
     {
         weight = 0;
         set_weight(weight);
-        write_char(tare);
+        scale_tare();
         lvgl_unlock();
     }
 }
