@@ -18,10 +18,11 @@ void reset_cb()
     {
         seconds = 0;
         set_timer(seconds);
+        scale_timer_reset();
+        scale_timer_on();
         lvgl_unlock();
     }
 }
-
 
 void tare_cb()
 {

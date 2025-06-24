@@ -3,6 +3,8 @@
 #include "lvgl.h"
 #include "../lvgl/lvgl_init.h"
 #include "esp_log.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "roboto_bold_40.h"
 #include "roboto_bold_60.h"
 #include "roboto_regular_20.h"
@@ -32,9 +34,12 @@ void toggle_on()
         lv_label_set_text(lbl_connect, is_on() ? "OFF" : "ON");
         lvgl_unlock();
     }
-    if (on) {
+    if (on)
+    {
         bt_connect_scale();
-    } else {
+    }
+    else
+    {
         disconnect_from_scale();
     }
 }
@@ -157,7 +162,7 @@ void set_weight(int weight)
 
     char str_weight[20];
     snprintf(str_weight, sizeof(str_weight), "%.1f", w);
-    ESP_LOGI(TAG, "Set Weight to %s", str_weight);
+    // ESP_LOGI(TAG, "Set Weight to %s", str_weight);
     if (lbl_weight != NULL)
     {
         lv_label_set_text_fmt(lbl_weight, "%s", str_weight);
@@ -166,7 +171,7 @@ void set_weight(int weight)
 
 void set_timer(int seconds)
 {
-    ESP_LOGI(TAG, "Set Timer to %d", seconds);
+    // ESP_LOGI(TAG, "Set Timer to %d", seconds);
     if (lbl_timer != NULL)
     {
         lv_label_set_text_fmt(lbl_timer, "%d", seconds);
