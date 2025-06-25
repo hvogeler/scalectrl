@@ -32,6 +32,7 @@
 
 #define SCALE_SERVICE_UUID 0xFFF0
 #define SET_CHAR_UUID 0x36F5
+#define NOTIFY_CHAR_UUID 0xFFF4
 #define PROFILE_NUM 1
 #define PROFILE_A_APP_ID 0
 #define INVALID_HANDLE 0
@@ -50,6 +51,8 @@ static uint8_t led_on_gram[] = {0x03, 0x0a, 0x01, 0x01, 0x00, 0x00, 0x09};
 static uint8_t led_on_ounce[] = {0x03, 0x0a, 0x01, 0x01, 0x01, 0x00, 0x08};
 static uint8_t led_off[] = {0x03, 0x0a, 0x00, 0x00, 0x00, 0x00, 0x09};
 
+static uint8_t power_off[] = {0x03, 0x0a, 0x02, 0x00, 0x00, 0x00, 0x0b};
+
 static uint8_t timer_on[] = {0x03, 0x0b, 0x03, 0x00, 0x00, 0x00, 0x0b};
 static uint8_t timer_off[] = {0x03, 0x0b, 0x00, 0x00, 0x00, 0x00, 0x08};
 static uint8_t timer_reset[] = {0x03, 0x0b, 0x02, 0x00, 0x00, 0x00, 0x0a};
@@ -62,58 +65,52 @@ void write_char(uint8_t write_data[]);
 
 char *TAG = "ble";
 
-/*** The UUID of the service containing characteristics: 0000fff0-0000-1000-8000-00805f9b34fb ***/
+// The UUID of the service containing characteristics: 0000fff0-0000-1000-8000-00805f9b34fb
+// The UUID of the set chatacteristic:                 000036f5-0000-1000-8000-00805f9b34fb
+// The UUID of the notify chatacteristic:              0000FFF3-0000-1000-8000-00805f9b34fb
 
-// static const esp_bt_uuid_t scale_svc_uuid = {
-//     .len = ESP_UUID_LEN_128,
-//     .uuid = {
-//         0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00,
-//         0x00, 0x80,
-//         0x00, 0x10,
-//         0x00, 0x00,
-//         0xf0, 0xff, 0x00, 0x00
-//     }
-//};
+static int16_t weight10 = 0;
+static SemaphoreHandle_t weight_mutex = NULL;
 
-// static const uint8_t set_char_uuid128[] = {
-//     0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80,  // Last 8 bytes reversed
-//     0x00, 0x10, 0x00, 0x00,                           // Middle 4 bytes reversed
-//     0xf5, 0x36, 0x00, 0x00                            // First 4 bytes reversed
-// };
+static void set_weight10(int16_t value)
+{
+    if (weight_mutex == NULL)
+    {
+        weight_mutex = xSemaphoreCreateMutex();
+    }
+    if (xSemaphoreTake(weight_mutex, pdMS_TO_TICKS(100)) == pdTRUE)
+    {
+        weight10 = value;
+        xSemaphoreGive(weight_mutex);
+    }
+}
 
-//     BLE_UUID128_DECLARE(0x00, 0x00, 0xff, 0xf0,
-//                         0x00, 0x00,
-//                         0x10, 0x00,
-//                         0x80, 0x00,
-//                         0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb);
-
-// /*** The UUID of the set chatacteristic: 000036f5-0000-1000-8000-00805f9b34fb ***/
-// static const ble_uuid_t *set_charac_uuid =
-//     BLE_UUID128_DECLARE(0x00, 0x00, 0x36, 0xf5,
-//                         0x00, 0x00,
-//                         0x10, 0x00,
-//                         0x80, 0x00,
-//                         0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb);
-
-// /*** The UUID of the set chatacteristic: 000036f5-0000-1000-8000-00805f9b34fb ***/
-// static const ble_uuid_t *notify_charac_uuid =
-//     BLE_UUID128_DECLARE(0x00, 0x00, 0xff, 0xf4,
-//                         0x00, 0x00,
-//                         0x10, 0x00,
-//                         0x80, 0x00,
-//                         0x00, 0x80, 0x5f, 0x9b, 0x34, 0xfb);
-
-// static esp_bt_uuid_t remote_filter_service_uuid = {
-//     .len = ESP_UUID_LEN_16,
-//     .uuid = {
-//         .uuid16 = REMOTE_SERVICE_UUID,
-//     },
-// };
+int16_t get_weight10()
+{
+    int16_t retval = 0;
+    if (weight_mutex == NULL)
+    {
+        weight_mutex = xSemaphoreCreateMutex();
+    }
+    if (xSemaphoreTake(weight_mutex, pdMS_TO_TICKS(100)) == pdTRUE)
+    {
+        retval = weight10;
+        xSemaphoreGive(weight_mutex);
+    }
+    return retval;
+}
 
 static esp_bt_uuid_t set_char_uuid = {
     .len = ESP_UUID_LEN_16,
     .uuid = {
         .uuid16 = SET_CHAR_UUID,
+    },
+};
+
+static esp_bt_uuid_t notify_char_uuid = {
+    .len = ESP_UUID_LEN_16,
+    .uuid = {
+        .uuid16 = NOTIFY_CHAR_UUID,
     },
 };
 
@@ -261,6 +258,7 @@ static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_
         }
         break;
     }
+
     case ESP_GATTC_SEARCH_CMPL_EVT:
         if (p_data->search_cmpl.status != ESP_GATT_OK)
         {
@@ -284,7 +282,7 @@ static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_
         {
             uint16_t count = 0;
             esp_gatt_status_t status = esp_ble_gattc_get_attr_count(gattc_if,
-                                                                    p_data->search_cmpl.conn_id,
+                                                                    p_data->search_res.conn_id,
                                                                     ESP_GATT_DB_CHARACTERISTIC,
                                                                     gl_profile_tab[PROFILE_A_APP_ID].service_start_handle,
                                                                     gl_profile_tab[PROFILE_A_APP_ID].service_end_handle,
@@ -296,7 +294,7 @@ static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_
                 break;
             }
 
-            if (count > 0)
+            if (count > 1)
             {
                 ESP_LOGI(TAG, "Found %d characteristics", count);
                 char_elem_result = (esp_gattc_char_elem_t *)malloc(sizeof(esp_gattc_char_elem_t) * count);
@@ -307,6 +305,7 @@ static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_
                 }
                 else
                 {
+                    // Get Set Characteristic (allows to set Tare)
                     status = esp_ble_gattc_get_char_by_uuid(gattc_if,
                                                             p_data->search_cmpl.conn_id,
                                                             gl_profile_tab[PROFILE_A_APP_ID].service_start_handle,
@@ -323,6 +322,30 @@ static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_
                     }
                     gl_profile_tab[PROFILE_A_APP_ID].set_char_handle = char_elem_result[0].char_handle;
                     ESP_LOGI(TAG, "set charac handle: %d, gattc_if: %d", gl_profile_tab[PROFILE_A_APP_ID].set_char_handle, gl_profile_tab[PROFILE_A_APP_ID].gattc_if);
+
+                    // Get Notification Characteristic (that sends the weight)
+                    status = esp_ble_gattc_get_char_by_uuid(gattc_if,
+                                                            p_data->search_cmpl.conn_id,
+                                                            gl_profile_tab[PROFILE_A_APP_ID].service_start_handle,
+                                                            gl_profile_tab[PROFILE_A_APP_ID].service_end_handle,
+                                                            notify_char_uuid,
+                                                            char_elem_result,
+                                                            &count);
+                    if (status != ESP_GATT_OK)
+                    {
+                        ESP_LOGE(TAG, "esp_ble_gattc_get_char_by_uuid error");
+                        free(char_elem_result);
+                        char_elem_result = NULL;
+                        break;
+                    }
+                    gl_profile_tab[PROFILE_A_APP_ID].notify_char_handle = char_elem_result[0].char_handle;
+                    status = esp_ble_gattc_register_for_notify(
+                        gl_profile_tab[PROFILE_A_APP_ID].gattc_if,
+                        gl_profile_tab[PROFILE_A_APP_ID].remote_bda,
+                        gl_profile_tab[PROFILE_A_APP_ID].notify_char_handle);
+
+                    ESP_LOGI(TAG, "notify charac handle: %d, gattc_if: %d", gl_profile_tab[PROFILE_A_APP_ID].notify_char_handle, gl_profile_tab[PROFILE_A_APP_ID].gattc_if);
+
                     init_scale();
                     /*  Every service have only one char in our 'ESP_GATTS_DEMO' demo, so we used first 'char_elem_result' */
                     // if (count > 0 && (char_elem_result[0].properties & ESP_GATT_CHAR_PROP_BIT_NOTIFY))
@@ -415,15 +438,16 @@ static void gattc_profile_event_handler(esp_gattc_cb_event_t event, esp_gatt_if_
         break;
     }
     case ESP_GATTC_NOTIFY_EVT:
-        if (p_data->notify.is_notify)
+        uint8_t *buf = p_data->notify.value;
+        if (p_data->notify.value_len > 3 && buf[1] != 0xaa)
         {
-            ESP_LOGI(TAG, "Notification received");
+            uint16_t highByte = (uint16_t)buf[2];
+            uint16_t lowByte = (uint16_t)buf[3];
+            int16_t weight10 = (highByte << 8) + lowByte;
+            // ESP_LOGI(TAG, "Weight: %d", weight10);
+            set_weight10(weight10);
         }
-        else
-        {
-            ESP_LOGI(TAG, "Indication received");
-        }
-        ESP_LOG_BUFFER_HEX(TAG, p_data->notify.value, p_data->notify.value_len);
+
         break;
     // case ESP_GATTC_WRITE_DESCR_EVT:
     //     if (p_data->write.status != ESP_GATT_OK)
@@ -593,7 +617,7 @@ static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
 // Main GATT handler
 static void esp_gattc_cb(esp_gattc_cb_event_t event, esp_gatt_if_t gattc_if, esp_ble_gattc_cb_param_t *param)
 {
-    ESP_LOGI(TAG, "esp_gattc_cb() called");
+    // ESP_LOGI(TAG, "esp_gattc_cb() called");
     /* If event is register event, store the gattc_if for each profile */
     if (event == ESP_GATTC_REG_EVT)
     {
@@ -805,6 +829,12 @@ void scale_led_off()
     write_char(led_off);
 }
 
+void scale_power_off()
+{
+    ESP_LOGI(TAG, "Sending POWER_OFF to scale");
+    write_char(power_off);
+}
+
 void scale_timer_on()
 {
     ESP_LOGI(TAG, "Sending TIMER ON to scale");
@@ -821,4 +851,16 @@ void scale_timer_reset()
 {
     ESP_LOGI(TAG, "Sending TIMER RESET to scale");
     write_char(timer_reset);
+}
+
+void set_unit(enum unit_t unit)
+{
+    if (unit == GRAM)
+    {
+        scale_led_on_gram();
+    }
+    else
+    {
+        scale_led_on_ounce();
+    }
 }

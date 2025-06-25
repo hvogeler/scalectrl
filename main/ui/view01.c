@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include "view01.h"
 #include "lvgl.h"
 #include "../lvgl/lvgl_init.h"
@@ -13,9 +14,10 @@
 static const char *TAG = "view01";
 void bt_connect_scale(void);
 void disconnect_from_scale(void);
+void toggle_unit();
 
 static lv_obj_t *lbl_weight;
-static lv_obj_t *lbl_gr, *lbl_timer, *lbl_seconds;
+static lv_obj_t *lbl_unit, *lbl_timer, *lbl_seconds;
 static lv_obj_t *btn_connect, *btn_tare, *btn_reset;
 static lv_obj_t *lbl_connect, *lbl_tare, *lbl_reset;
 static lv_style_t style_pane;
@@ -42,6 +44,10 @@ void toggle_on()
     {
         disconnect_from_scale();
     }
+}
+
+void power_off() {
+    scale_power_off();
 }
 
 void default_cb()
@@ -107,6 +113,7 @@ void make_widget_tree(lv_event_cb_t reset_cb, lv_event_cb_t tare_cb)
     // buttons
     btn_connect = lv_button_create(buttons_pane);
     lv_obj_add_event_cb(btn_connect, toggle_on, LV_EVENT_CLICKED, NULL);
+    lv_obj_add_event_cb(btn_connect, power_off, LV_EVENT_LONG_PRESSED, NULL);
     lv_obj_set_width(btn_connect, LV_PCT(100));
     lbl_connect = lv_label_create(btn_connect);
     lv_label_set_text(lbl_connect, is_on() ? "OFF" : "ON");
@@ -127,19 +134,23 @@ void make_widget_tree(lv_event_cb_t reset_cb, lv_event_cb_t tare_cb)
     lv_obj_set_width(btn_reset, LV_PCT(100));
     lv_obj_add_event_cb(btn_reset, reset_cb, LV_EVENT_CLICKED, NULL);
     lbl_reset = lv_label_create(btn_reset);
-    lv_label_set_text(lbl_reset, "ZERO");
+    lv_label_set_text(lbl_reset, "TIMER");
     lv_obj_align(lbl_reset, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_text_font(lbl_reset, &roboto_regular_20, LV_PART_MAIN);
     lv_obj_set_flex_grow(btn_reset, 1);
 
     // labels / fields
     // weight
-    lbl_gr = lv_label_create(weight_pane);
-    lv_label_set_text(lbl_gr, "Gramm");
-    lv_obj_align(lbl_gr, LV_ALIGN_RIGHT_MID, 0, 0);
-    lv_obj_set_style_text_font(lbl_gr, &roboto_regular_20, LV_PART_MAIN);
+    lbl_unit = lv_label_create(weight_pane);
+    lv_obj_add_flag(lbl_unit, LV_OBJ_FLAG_CLICKABLE);
+    // lv_obj_add_event_cb(lbl_unit, toggle_unit, LV_EVENT_CLICKED, NULL);
+    lv_label_set_text(lbl_unit, "Gram");
+    lv_obj_align(lbl_unit, LV_ALIGN_RIGHT_MID, 0, 0);
+    lv_obj_set_style_text_font(lbl_unit, &roboto_regular_20, LV_PART_MAIN);
 
     lbl_weight = lv_label_create(weight_pane);
+    lv_obj_add_flag(lbl_weight, LV_OBJ_FLAG_CLICKABLE);
+    // lv_obj_add_event_cb(lbl_weight, toggle_unit, LV_EVENT_CLICKED, NULL);
     lv_label_set_text(lbl_weight, "0.0");
     lv_obj_align(lbl_weight, LV_ALIGN_RIGHT_MID, 0, 0);
     lv_obj_set_style_text_font(lbl_weight, &roboto_bold_60, LV_PART_MAIN);
@@ -156,7 +167,7 @@ void make_widget_tree(lv_event_cb_t reset_cb, lv_event_cb_t tare_cb)
     lv_obj_set_style_text_font(lbl_timer, &roboto_bold_40, LV_PART_MAIN);
 }
 
-void set_weight(int weight)
+void set_weight(int16_t weight)
 {
     float w = (float)weight / 10;
 
@@ -177,3 +188,18 @@ void set_timer(int seconds)
         lv_label_set_text_fmt(lbl_timer, "%d", seconds);
     }
 }
+
+// void toggle_unit()
+// {
+//     char *current_unit = lv_label_get_text(lbl_unit);
+//     if (strcmp(current_unit, "Gram") == 0)
+//     {
+//         lv_label_set_text(lbl_unit, "Ounce");
+//         set_unit(OUNCE);
+//     }
+//     else
+//     {
+//         lv_label_set_text(lbl_unit, "Gram");
+//         set_unit(GRAM);
+//     }
+// }
