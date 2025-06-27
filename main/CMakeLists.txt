@@ -6,7 +6,6 @@ idf_component_register(
     SRCS 
       "main.c"
       "display/wavesharelcd2/display_init.c"
-      "lvgl/lvgl_init.c"
       "ui/view01.c"
       "ui/fonts/roboto_bold_40.c"      
       "ui/fonts/roboto_bold_60.c"      

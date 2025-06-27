@@ -3,6 +3,8 @@
 #include "view01.h"
 #include "lvgl.h"
 #include "../lvgl/lvgl_init.h"
+#include "esp_lvgl_port.h"
+
 #include "esp_log.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
@@ -31,10 +33,10 @@ bool is_on()
 void toggle_on()
 {
     on = !on;
-    if (lvgl_lock(1))
+    if (lvgl_port_lock(1000))
     {
         lv_label_set_text(lbl_connect, is_on() ? "OFF" : "ON");
-        lvgl_unlock();
+        lvgl_port_unlock();
     }
     if (on)
     {
@@ -46,7 +48,8 @@ void toggle_on()
     }
 }
 
-void power_off() {
+void power_off()
+{
     scale_power_off();
 }
 
@@ -58,7 +61,11 @@ void default_cb()
 void make_widget_tree(lv_event_cb_t reset_cb, lv_event_cb_t tare_cb)
 {
     // setup screen
-    lv_obj_t *screen = lv_screen_active();
+    lv_obj_t *screen = lv_scr_act();
+
+    /* Task lock */
+    lvgl_port_lock(1000);
+
     lv_obj_set_scrollbar_mode(screen, LV_SCROLLBAR_MODE_OFF);
     lv_obj_set_style_bg_color(screen, lv_color_black(), LV_PART_MAIN);
     lv_obj_set_layout(screen, LV_LAYOUT_FLEX);
@@ -120,6 +127,8 @@ void make_widget_tree(lv_event_cb_t reset_cb, lv_event_cb_t tare_cb)
     lv_obj_align(lbl_connect, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_text_font(lbl_connect, &roboto_regular_20, LV_PART_MAIN);
     lv_obj_set_flex_grow(btn_connect, 1);
+    // lv_obj_set_style_border_width(btn_connect, 0, LV_PART_MAIN);
+    // lv_obj_set_style_bg_color(btn_connect, lv_palette_main(LV_PALETTE_RED), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     btn_tare = lv_button_create(buttons_pane);
     lv_obj_add_event_cb(btn_tare, tare_cb, LV_EVENT_CLICKED, NULL);
@@ -165,6 +174,8 @@ void make_widget_tree(lv_event_cb_t reset_cb, lv_event_cb_t tare_cb)
     lv_label_set_text(lbl_timer, "0");
     lv_obj_align(lbl_timer, LV_ALIGN_RIGHT_MID, 0, 0);
     lv_obj_set_style_text_font(lbl_timer, &roboto_bold_40, LV_PART_MAIN);
+
+    lvgl_port_unlock();
 }
 
 void set_weight(int16_t weight)

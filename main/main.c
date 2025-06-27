@@ -2,9 +2,10 @@
 #include <string.h>
 #include "esp_timer.h"
 #include "esp_log.h"
+#include "esp_err.h"
 #include "esp_lcd_panel_io.h"
 #include "display/wavesharelcd2/display_init.h"
-#include "lvgl/lvgl_init.h"
+#include "esp_lvgl_port.h"
 #include "ui/view01.h"
 #include "scale/ble.h"
 
@@ -13,22 +14,22 @@ static int seconds = 0;
 
 void reset_cb()
 {
-    if (lvgl_lock(-1))
+    if (lvgl_port_lock(0))
     {
         seconds = 0;
         set_timer(seconds);
         scale_timer_reset();
         scale_timer_on();
-        lvgl_unlock();
+        lvgl_port_unlock();
     }
 }
 
 void tare_cb()
 {
-    if (lvgl_lock(-1))
+    if (lvgl_port_lock(0))
     {
         scale_tare();
-        lvgl_unlock();
+        lvgl_port_unlock();
     }
 }
 
@@ -39,11 +40,11 @@ void collect_weight_task(void *params)
         vTaskDelay(pdMS_TO_TICKS(100));
         if (is_on())
         {
-            if (lvgl_lock(1))
+            if (lvgl_port_lock(1))
             {
                 int16_t weight10 = get_weight10();
                 set_weight(weight10);
-                lvgl_unlock();
+                lvgl_port_unlock();
             }
         }
     }
@@ -63,10 +64,10 @@ void timer_task(void *params)
         seconds++;
         if (is_on())
         {
-            if (lvgl_lock(1))
+            if (lvgl_port_lock(1000))
             {
                 set_timer(seconds);
-                lvgl_unlock();
+                lvgl_port_unlock();
             }
         }
         // Wait for the next cycle (1 second)
@@ -88,16 +89,18 @@ void app_main(void)
     bsp_brightness_set_level(80);
 
     // Create UI
-    if (lvgl_lock(-1))
-    {
-        ESP_LOGI(TAG, "Creating widgets demo");
-        // lv_demo_widgets();
-        make_widget_tree(reset_cb, tare_cb);
-        lvgl_unlock();
-    }
+    // if (lvgl_port_lock(-1))
+    // {
+    //     ESP_LOGI(TAG, "Creating widgets demo");
+    //     // lv_demo_widgets();
+    //     make_widget_tree(reset_cb, tare_cb);
+    //     lvgl_port_unlock();
+    // }
+
+    make_widget_tree(reset_cb, tare_cb);
 
     // Start LVGL task
-    xTaskCreatePinnedToCore(lvgl_task, "lvgl_task", 1024 * 24, NULL, 5, NULL, 1);
+    // xTaskCreatePinnedToCore(lvgl_task, "lvgl_task", 1024 * 24, NULL, 5, NULL, 1);
 
     // Start weight collection task
     xTaskCreatePinnedToCore(collect_weight_task, "collect_weight_task", 1024 * 2, NULL, 5, NULL, 1);
