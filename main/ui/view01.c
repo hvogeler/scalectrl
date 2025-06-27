@@ -32,6 +32,8 @@ bool is_on()
 
 void toggle_on()
 {
+    ESP_LOGI(TAG, "ON Pressed");
+
     on = !on;
     if (lvgl_port_lock(1000))
     {

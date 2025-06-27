@@ -37,6 +37,11 @@
 #define GPIO_PIN_NUM_LCD_RST -1
 #define GPIO_PIN_NUM_LCD_CS 45
 
+#define LCD_H_RES 320
+#define LCD_V_RES 240
+#define TOUCH_H_RES LCD_V_RES
+#define TOUCH_V_RES LCD_H_RES
+
 #define LCD_CMD_BITS 8
 #define LCD_PARAM_BITS 8
 #define GPIO_PIN_NUM_BK_LIGHT 1
@@ -48,12 +53,11 @@
 #define LCD_BL_LEDC_DUTY (1024)
 #define LCD_BL_LEDC_FREQUENCY (10000)
 
-
 // Buffer size - use 1/8 of screen for better stability
 #define LVGL_BUFFER_SIZE (LCD_H_RES * LCD_V_RES / 8)
 #define EXAMPLE_LCD_DRAW_BUFF_DOUBLE (1)
 #define EXAMPLE_LCD_DRAW_BUFF_HEIGHT (50)
-#define EXAMPLE_LCD_BL_ON_LEVEL     (1)
+#define EXAMPLE_LCD_BL_ON_LEVEL (1)
 
 static const char *TAG = "display";
 
@@ -61,62 +65,13 @@ static const char *TAG = "display";
 
 // Hardware handles
 static esp_lcd_panel_io_handle_t io_handle = NULL;
-esp_lcd_panel_handle_t panel_handle;
-esp_lcd_touch_handle_t touch_handle;
-i2c_master_bus_handle_t i2c_bus_handle;
+static esp_lcd_panel_handle_t panel_handle;
+static esp_lcd_touch_handle_t touch_handle;
+static i2c_master_bus_handle_t i2c_bus_handle;
 
 /* LVGL display and touch */
 static lv_display_t *lvgl_disp = NULL;
 static lv_indev_t *lvgl_touch_indev = NULL;
-
-// Simple flush callback - NO async, NO callbacks
-// void lvgl_flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
-// {
-//     int offsetx1 = area->x1;
-//     int offsetx2 = area->x2;
-//     int offsety1 = area->y1;
-//     int offsety2 = area->y2;
-
-//     // Bounds checking
-//     if (offsetx1 < 0)
-//         offsetx1 = 0;
-//     if (offsety1 < 0)
-//         offsety1 = 0;
-//     if (offsetx2 >= LCD_H_RES)
-//         offsetx2 = LCD_H_RES - 1;
-//     if (offsety2 >= LCD_V_RES)
-//         offsety2 = LCD_V_RES - 1;
-
-//     // Simple synchronous call
-//     esp_lcd_panel_draw_bitmap(panel_handle, offsetx1, offsety1, offsetx2 + 1, offsety2 + 1, px_map);
-
-//     // Immediately tell LVGL we're done
-//     lv_display_flush_ready(disp);
-// }
-
-// void lvgl_touch_cb(lv_indev_t *indev, lv_indev_data_t *data)
-// {
-//     uint16_t touchpad_x[1] = {0};
-//     uint16_t touchpad_y[1] = {0};
-//     uint8_t touchpad_cnt = 0;
-
-//     esp_lcd_touch_read_data(touch_handle);
-//     bool touchpad_pressed = esp_lcd_touch_get_coordinates(touch_handle, touchpad_x, touchpad_y, NULL, &touchpad_cnt, 1);
-
-//     if (touchpad_pressed && touchpad_cnt > 0)
-//     {
-//         uint16_t x = LCD_V_RES - touchpad_x[0];
-//         uint16_t y = touchpad_y[0];
-//         data->point.x = y;
-//         data->point.y = x;
-//         data->state = LV_INDEV_STATE_PRESSED;
-//         ESP_LOGI(TAG, "touched at (%d, %d)", x, y);
-//     }
-//     else
-//     {
-//         data->state = LV_INDEV_STATE_RELEASED;
-//     }
-// }
 
 void display_init(void)
 {
@@ -131,9 +86,6 @@ void display_init(void)
     };
     ESP_ERROR_CHECK(spi_bus_initialize(SPI_HOST, &buscfg, SPI_DMA_CH_AUTO));
 
-    // ESP_LOGI(TAG, "Install panel IO");
-    // esp_lcd_panel_io_handle_t io_handle = NULL;
-
     // Simple SPI configuration - NO async callbacks
     esp_lcd_panel_io_spi_config_t io_config = {
         .dc_gpio_num = GPIO_PIN_NUM_LCD_DC,
@@ -142,7 +94,7 @@ void display_init(void)
         .lcd_cmd_bits = LCD_CMD_BITS,
         .lcd_param_bits = LCD_PARAM_BITS,
         .spi_mode = 0,
-        .trans_queue_depth = 1, // Keep it simple
+        .trans_queue_depth = 10,
         // No callbacks for maximum compatibility
         .on_color_trans_done = NULL,
         .user_ctx = NULL,
@@ -189,22 +141,12 @@ void touch_init(void)
 
     ESP_LOGI(TAG, "Initialize touch panel IO");
 
-    esp_lcd_panel_io_i2c_config_t tp_io_config = {
-        .dev_addr = 0x15,
-        .scl_speed_hz = 400000,
-        .control_phase_bytes = 1,
-        .dc_bit_offset = 0,
-        .lcd_cmd_bits = 8,
-        .lcd_param_bits = 8,
-        .flags = {
-            .disable_control_phase = 0,
-        }};
-    // const esp_lcd_panel_io_i2c_config_t tp_io_configxx = ESP_LCD_TOUCH_IO_I2C_CST816S_CONFIG();
+    const esp_lcd_panel_io_i2c_config_t tp_io_config = ESP_LCD_TOUCH_IO_I2C_CST816S_CONFIG();
     ESP_ERROR_CHECK(esp_lcd_new_panel_io_i2c(i2c_bus_handle, &tp_io_config, &tp_io_handle));
 
     esp_lcd_touch_config_t tp_cfg = {
-        .x_max = LCD_H_RES,
-        .y_max = LCD_V_RES,
+        .x_max = TOUCH_H_RES,
+        .y_max = TOUCH_V_RES,
         .rst_gpio_num = -1,
         .int_gpio_num = -1,
         .flags = {
@@ -220,16 +162,15 @@ void touch_init(void)
     ESP_LOGI(TAG, "Touch controller initialized");
 }
 
-
 esp_err_t lvgl_init(void)
 {
     /* Initialize LVGL */
     const lvgl_port_cfg_t lvgl_cfg = {
-        .task_priority = 4,         /* LVGL task priority */
-        .task_stack = 1024 * 24,         /* LVGL task stack size */
-        .task_affinity = -1,        /* LVGL task pinned to core (-1 is no affinity) */
-        .task_max_sleep_ms = 500,   /* Maximum sleep in LVGL task */
-        .timer_period_ms = 5        /* LVGL timer tick period in ms */
+        .task_priority = 4,       /* LVGL task priority */
+        .task_stack = 1024 * 24,  /* LVGL task stack size */
+        .task_affinity = -1,      /* LVGL task pinned to core (-1 is no affinity) */
+        .task_max_sleep_ms = 500, /* Maximum sleep in LVGL task */
+        .timer_period_ms = 5      /* LVGL timer tick period in ms */
     };
     ESP_RETURN_ON_ERROR(lvgl_port_init(&lvgl_cfg), TAG, "LVGL port initialization failed");
 
@@ -252,8 +193,7 @@ esp_err_t lvgl_init(void)
         .flags = {
             .buff_dma = true,
             .swap_bytes = true,
-        }
-    };
+        }};
     lvgl_disp = lvgl_port_add_disp(&disp_cfg);
 
     /* Add touch input (for selected screen) */

@@ -14,6 +14,7 @@ static int seconds = 0;
 
 void reset_cb()
 {
+    ESP_LOGI(TAG, "TIMER Pressed");
     if (lvgl_port_lock(0))
     {
         seconds = 0;
@@ -26,6 +27,7 @@ void reset_cb()
 
 void tare_cb()
 {
+    ESP_LOGI(TAG, "TARE Pressed");
     if (lvgl_port_lock(0))
     {
         scale_tare();
