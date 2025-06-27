@@ -82,27 +82,14 @@ void app_main(void)
     // Initialize hardware
     display_init();
     touch_init();
-
-    // Initialize LVGL
-    lvgl_init();
+    ESP_ERROR_CHECK(lvgl_init());
 
     // Setup backlight
     bsp_brightness_init();
     bsp_brightness_set_level(80);
 
     // Create UI
-    // if (lvgl_port_lock(-1))
-    // {
-    //     ESP_LOGI(TAG, "Creating widgets demo");
-    //     // lv_demo_widgets();
-    //     make_widget_tree(reset_cb, tare_cb);
-    //     lvgl_port_unlock();
-    // }
-
     make_widget_tree(reset_cb, tare_cb);
-
-    // Start LVGL task
-    // xTaskCreatePinnedToCore(lvgl_task, "lvgl_task", 1024 * 24, NULL, 5, NULL, 1);
 
     // Start weight collection task
     xTaskCreatePinnedToCore(collect_weight_task, "collect_weight_task", 1024 * 2, NULL, 5, NULL, 1);

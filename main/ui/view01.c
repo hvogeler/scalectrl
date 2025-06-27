@@ -2,7 +2,6 @@
 #include <string.h>
 #include "view01.h"
 #include "lvgl.h"
-#include "../lvgl/lvgl_init.h"
 #include "esp_lvgl_port.h"
 
 #include "esp_log.h"
@@ -16,7 +15,6 @@
 static const char *TAG = "view01";
 void bt_connect_scale(void);
 void disconnect_from_scale(void);
-void toggle_unit();
 
 static lv_obj_t *lbl_weight;
 static lv_obj_t *lbl_unit, *lbl_timer, *lbl_seconds;
@@ -97,10 +95,6 @@ void make_widget_tree(lv_event_cb_t reset_cb, lv_event_cb_t tare_cb)
     lv_obj_set_flex_grow(data_pane, 6);
     lv_obj_set_style_bg_color(data_pane, lv_color_black(), LV_PART_MAIN);
 
-    // lv_style_init(&style_datapane);
-    // lv_style_set_pad_bottom(&style_datapane, 45);
-    // lv_obj_add_style(data_pane, &style_datapane, LV_PART_MAIN | LV_STATE_DEFAULT);
-
     lv_obj_t *weight_pane = lv_obj_create(data_pane);
     lv_obj_set_width(weight_pane, LV_PCT(100));
     lv_obj_add_style(weight_pane, &style_pane, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -129,8 +123,6 @@ void make_widget_tree(lv_event_cb_t reset_cb, lv_event_cb_t tare_cb)
     lv_obj_align(lbl_connect, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_text_font(lbl_connect, &roboto_regular_20, LV_PART_MAIN);
     lv_obj_set_flex_grow(btn_connect, 1);
-    // lv_obj_set_style_border_width(btn_connect, 0, LV_PART_MAIN);
-    // lv_obj_set_style_bg_color(btn_connect, lv_palette_main(LV_PALETTE_RED), LV_PART_MAIN | LV_STATE_DEFAULT);
 
     btn_tare = lv_button_create(buttons_pane);
     lv_obj_add_event_cb(btn_tare, tare_cb, LV_EVENT_CLICKED, NULL);
@@ -201,18 +193,3 @@ void set_timer(int seconds)
         lv_label_set_text_fmt(lbl_timer, "%d", seconds);
     }
 }
-
-// void toggle_unit()
-// {
-//     char *current_unit = lv_label_get_text(lbl_unit);
-//     if (strcmp(current_unit, "Gram") == 0)
-//     {
-//         lv_label_set_text(lbl_unit, "Ounce");
-//         set_unit(OUNCE);
-//     }
-//     else
-//     {
-//         lv_label_set_text(lbl_unit, "Gram");
-//         set_unit(GRAM);
-//     }
-// }
