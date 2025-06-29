@@ -77,6 +77,23 @@ void timer_task(void *params)
     }
 }
 
+void check_battery_task(void *params)
+{
+    while (1)
+    {
+        vTaskDelay(pdMS_TO_TICKS(10000));
+        if (is_on())
+        {
+            if (lvgl_port_lock(1))
+            {
+                int16_t weight10 = get_weight10();
+                set_weight(weight10);
+                lvgl_port_unlock();
+            }
+        }
+    }
+}
+
 void app_main(void)
 {
     // Initialize hardware
