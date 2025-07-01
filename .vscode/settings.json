@@ -27,7 +27,8 @@
     "esp_central.h": "c",
     "ble_uuid.h": "c",
     "esp_gap_ble_api.h": "c",
-    "ios": "c"
+    "ios": "c",
+    "cmath": "c"
   },
   "idf.flashType": "UART"
 }

@@ -2,6 +2,7 @@
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
 #include "esp_log.h"
+#include <math.h>
 
 #define BATTERY_ADC_SIZE 15
 #define EXAMPLE_BATTERY_ADC_CHANNEL ADC_CHANNEL_4
@@ -88,6 +89,72 @@ void battery_init(void)
     //-------------ADC1 Calibration Init---------------//
 
     do_calibration1_chan0 = example_adc_calibration_init(ADC_UNIT_1, EXAMPLE_BATTERY_ADC_CHANNEL, EXAMPLE_ADC_ATTEN, &adc1_cali_chan0_handle);
+}
+
+// 4.2V = 100%
+// 4.0V ≈ 85%
+// 3.8V ≈ 65%
+// 3.6V ≈ 40%
+// 3.4V ≈ 20%
+// 3.2V ≈ 5%
+// 3.0V = 0%
+uint8_t mapBatVolt2Pct(float v)
+{
+    if (v >= 4.2)
+    {
+        return 100;
+    }
+    if (v >= 4.0 && v < 4.2)
+    {
+        return 85;
+    }
+    if (v > 3.8 && v < 4.0)
+    {
+        return 65;
+    }
+    if (v >= 3.6 && v < 3.8)
+    {
+        return 40;
+    }
+    if (v >= 3.4 && v < 3.6)
+    {
+        return 20;
+    }
+    if (v >= 3.2 && v < 3.4)
+    {
+        return 5;
+    }
+    return 0;
+}
+
+/**
+ * Convert lithium battery voltage to percentage using sigmoid function
+ * 
+ * @param voltage: Battery voltage in volts (typically 3.0V to 4.2V)
+ * @return: Battery percentage (0.0 to 100.0)
+ */
+float voltage_to_percentage_sigmoid(float voltage) {
+    const float V_MIN = 3.0f;      // Minimum voltage (0%)
+    const float V_MAX = 4.2f;      // Maximum voltage (100%)
+    const float V_MID = 3.6f;      // Midpoint voltage (50%)
+    const float steepness = 12.0f; // Controls curve steepness
+    
+    // Sigmoid function: 1 / (1 + e^(-k*(x-x0)))
+    float normalized = (voltage - V_MID) * steepness;
+    float sigmoid = 1.0f / (1.0f + expf(-normalized));
+    
+    // Scale to 0-100 percentage
+    float percentage = sigmoid * 100.0f;
+    
+    // Apply hard limits based on voltage range
+    if (voltage <= V_MIN) percentage = 0.0f;
+    if (voltage >= V_MAX) percentage = 100.0f;
+    
+    // Clamp to 0-100 range (safety check)
+    if (percentage < 0.0f) percentage = 0.0f;
+    if (percentage > 100.0f) percentage = 100.0f;
+    
+    return percentage;
 }
 
 void battery_get_voltage(float *voltage, uint16_t *adc_value)

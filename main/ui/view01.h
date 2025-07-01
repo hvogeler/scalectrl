@@ -5,5 +5,6 @@
 void make_widget_tree(lv_event_cb_t, lv_event_cb_t);
 void set_weight(int16_t);
 void set_timer(int);
+void set_battery(float voltage);
 bool is_on();
 void toggle_on();

@@ -8,6 +8,7 @@
 #include "esp_lvgl_port.h"
 #include "ui/view01.h"
 #include "scale/ble.h"
+#include "display/wavesharelcd2/battery.h"
 
 static const char *TAG = "scalectrl";
 static int seconds = 0;
@@ -82,14 +83,14 @@ void check_battery_task(void *params)
     while (1)
     {
         vTaskDelay(pdMS_TO_TICKS(10000));
-        if (is_on())
+        if (lvgl_port_lock(1))
         {
-            if (lvgl_port_lock(1))
-            {
-                int16_t weight10 = get_weight10();
-                set_weight(weight10);
-                lvgl_port_unlock();
-            }
+            float voltage;
+            uint16_t adc_value;
+            battery_get_voltage(&voltage, &adc_value);
+            set_battery(voltage);
+            ESP_LOGI(TAG, "Battery: %.2f", voltage);
+            lvgl_port_unlock();
         }
     }
 }
@@ -107,12 +108,16 @@ void app_main(void)
 
     // Create UI
     make_widget_tree(reset_cb, tare_cb);
+    battery_init();
 
     // Start weight collection task
     xTaskCreatePinnedToCore(collect_weight_task, "collect_weight_task", 1024 * 2, NULL, 5, NULL, 1);
 
     // Start timer task
     xTaskCreatePinnedToCore(timer_task, "timer_task", 1024 * 2, NULL, 5, NULL, 1);
+
+    // Start battery task
+    xTaskCreatePinnedToCore(check_battery_task, "check_battery_task", 1024 * 2, NULL, 5, NULL, 1);
 
     ESP_LOGI(TAG, "Setup complete");
 

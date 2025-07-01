@@ -11,15 +11,17 @@
 #include "roboto_bold_60.h"
 #include "roboto_regular_20.h"
 #include "scale/ble.h"
+#include "display/wavesharelcd2/battery.h"
 
 static const char *TAG = "view01";
 void bt_connect_scale(void);
 void disconnect_from_scale(void);
 
-static lv_obj_t *lbl_weight, *lbl_version, *lbl_battery;
+static lv_obj_t *lbl_weight, *lbl_battery;
 static lv_obj_t *lbl_unit, *lbl_timer, *lbl_seconds;
 static lv_obj_t *btn_connect, *btn_tare, *btn_reset;
 static lv_obj_t *lbl_connect, *lbl_tare, *lbl_reset;
+static lv_obj_t *img_battery;
 static lv_style_t style_pane, style_btn, style_weight;
 static bool on = false;
 
@@ -177,6 +179,8 @@ void make_widget_tree(lv_event_cb_t reset_cb, lv_event_cb_t tare_cb)
     // lv_obj_set_width(lbl_unit, LV_PCT(100));
     // lv_obj_align(lbl_unit, LV_ALIGN_RIGHT_MID, LV_ALIGN_RIGHT_MID, LV_ALIGN_RIGHT_MID);
     lv_obj_set_style_text_font(lbl_unit, &roboto_regular_20, LV_PART_MAIN);
+        lv_obj_set_style_text_color(lbl_unit, lv_color_hex(0xbbbbbb), LV_PART_MAIN);
+
 
     lbl_weight = lv_label_create(data_pane);
     lv_obj_add_flag(lbl_weight, LV_OBJ_FLAG_CLICKABLE);
@@ -191,6 +195,7 @@ void make_widget_tree(lv_event_cb_t reset_cb, lv_event_cb_t tare_cb)
     lv_label_set_text(lbl_seconds, "Seconds");
     // lv_obj_align(lbl_seconds, LV_ALIGN_RIGHT_MID, 0, 0);
     lv_obj_set_style_text_font(lbl_seconds, &roboto_regular_20, LV_PART_MAIN);
+        lv_obj_set_style_text_color(lbl_seconds, lv_color_hex(0xbbbbbb), LV_PART_MAIN);
 
     lbl_timer = lv_label_create(data_pane);
     lv_label_set_text(lbl_timer, "0");
@@ -200,15 +205,20 @@ void make_widget_tree(lv_event_cb_t reset_cb, lv_event_cb_t tare_cb)
     lv_obj_set_style_margin_bottom(lbl_timer, 10, LV_PART_MAIN);
 
     // battery
-    lbl_version = lv_label_create(data_pane);
-    lv_label_set_text(lbl_version, "V0.9.0 - 3.6V");
-    lv_obj_set_style_text_font(lbl_version, &roboto_regular_20, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl_version, lv_color_hex(0x009900), LV_PART_MAIN);
+    lv_obj_t *bat_widget = lv_obj_create(data_pane);
+    lv_obj_set_flex_flow(bat_widget, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(bat_widget, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_bg_color(bat_widget, lv_color_black(), LV_PART_MAIN);
+    lv_obj_set_style_text_color(bat_widget, lv_color_hex(0xbbbbbb), LV_PART_MAIN);
+    lv_obj_set_style_border_width(bat_widget, 0, LV_PART_MAIN);
 
-    // lv_obj_set_flex_align(lbl_version, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_END);
-    // lbl_battery = lv_label_create(data_pane);
-    // lv_label_set_text(lbl_battery, "3.6V");
-    // lv_obj_set_style_text_font(lbl_battery, &roboto_regular_20, LV_PART_MAIN);
+    lbl_battery = lv_label_create(bat_widget);
+    lv_label_set_text(lbl_battery, "V0.9.0");
+    lv_obj_set_style_text_font(lbl_battery, &roboto_regular_20, LV_PART_MAIN);
+    img_battery = lv_image_create(bat_widget);
+    lv_image_set_src(img_battery, LV_SYMBOL_BATTERY_FULL);
+    lv_obj_set_size(bat_widget, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+    lv_obj_set_style_pad_all(bat_widget, 0, 0);
 
     lvgl_port_unlock();
 }
@@ -223,6 +233,36 @@ void set_weight(int16_t weight)
     if (lbl_weight != NULL)
     {
         lv_label_set_text_fmt(lbl_weight, "%s", str_weight);
+    }
+}
+
+int round_to_int(float x)
+{
+    return (int)(x + (x >= 0 ? 0.5f : -0.5f));
+}
+
+void set_battery(float voltage)
+{
+    // char str_voltage[20];
+    // snprintf(str_voltage, sizeof(str_voltage), "%.1f", voltage);
+    char bat_percent[20];
+    snprintf(bat_percent, sizeof(bat_percent), "%d %%", round_to_int(voltage_to_percentage_sigmoid(voltage)));
+    // ESP_LOGI(TAG, "Set Battery percent to %s", percent);
+    if (lbl_battery != NULL)
+    {
+        lv_image_set_src(img_battery, LV_SYMBOL_BATTERY_FULL);
+        int bat_percent = round_to_int(voltage_to_percentage_sigmoid(voltage));
+        lv_label_set_text_fmt(lbl_battery, "%d%%", bat_percent);
+        uint32_t color = 0x00aa00; // green
+        if (bat_percent < 40)
+        {
+            color = 0x00aaaa;
+        }
+        if (bat_percent < 15)
+        {
+            color = 0xaa0000;
+        }
+        lv_obj_set_style_text_color(img_battery, lv_color_hex(color), LV_PART_MAIN);
     }
 }
 
