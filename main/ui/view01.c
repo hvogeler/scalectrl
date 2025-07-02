@@ -24,7 +24,7 @@ static lv_obj_t *lbl_unit, *lbl_timer, *lbl_seconds;
 static lv_obj_t *btn_connect, *btn_tare, *btn_timer;
 static lv_obj_t *lbl_connect, *lbl_tare, *lbl_reset;
 static lv_obj_t *img_battery;
-static lv_style_t style_pane, style_btn, style_weight;
+static lv_style_t style_pane, style_btn;
 static bool on = false;
 
 bool is_on()
