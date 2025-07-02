@@ -1,17 +1,6 @@
 /*
- * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
- *
- * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ * This ble code should be closer to the scale_ctrl controller. But I keep is separate to make reuse easier
  */
-
-/****************************************************************************
- *
- * This demo showcases BLE GATT client. It can scan BLE devices and connect to one device.
- * Run the gatt_server demo, the client demo will automatically connect to the gatt_server demo.
- * Client demo will enable gatt_server's notify after connection. The two devices will then exchange
- * data.
- *
- ****************************************************************************/
 
 #include <stdint.h>
 #include <string.h>
@@ -503,10 +492,6 @@ static void esp_gap_cb(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t *par
     {
     case ESP_GAP_BLE_SCAN_PARAM_SET_COMPLETE_EVT:
     {
-        // The unit of duration is seconds.
-        // If duration is set to 0, scanning will continue indefinitely
-        // until esp_ble_gap_stop_scanning is explicitly called.
-        uint32_t duration = 30;
         esp_ble_gap_start_scanning(0);
         break;
     }
@@ -790,7 +775,6 @@ void disconnect_from_scale(void)
 
 void write_char(uint8_t write_data[])
 {
-    ESP_LOGI(TAG, "sizeof scale commands: %d", sizeof(write_data));
     esp_err_t ret = esp_ble_gattc_write_char(
         gl_profile_tab[PROFILE_A_APP_ID].gattc_if,
         gl_profile_tab[PROFILE_A_APP_ID].conn_id,
