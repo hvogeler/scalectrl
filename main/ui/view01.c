@@ -52,9 +52,11 @@ void toggle_on()
     }
 }
 
-void power_off()
+void power_off(lv_event_t *e)
 {
+    // lv_event_stop_processing(e);
     scale_power_off();
+    enter_deep_sleep();
 }
 
 void default_cb()
@@ -147,12 +149,14 @@ void make_widget_tree()
     // weight
     lbl_unit = lv_label_create(data_pane);
     lv_obj_add_flag(lbl_unit, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(lbl_unit, tare_cb, LV_EVENT_CLICKED, NULL);
     lv_label_set_text(lbl_unit, "Gram");
     lv_obj_set_style_text_font(lbl_unit, &roboto_regular_20, LV_PART_MAIN);
     lv_obj_set_style_text_color(lbl_unit, lv_color_hex(0xbbbbbb), LV_PART_MAIN);
 
     lbl_weight = lv_label_create(data_pane);
     lv_obj_add_flag(lbl_weight, LV_OBJ_FLAG_CLICKABLE);
+    lv_obj_add_event_cb(lbl_weight, tare_cb, LV_EVENT_CLICKED, NULL);
     lv_label_set_text(lbl_weight, "0.0");
     lv_obj_set_style_text_font(lbl_weight, &roboto_bold_60, LV_PART_MAIN);
     lv_obj_set_style_margin_bottom(lbl_weight, 10, LV_PART_MAIN);

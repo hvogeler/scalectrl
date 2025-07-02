@@ -246,3 +246,10 @@ void bsp_brightness_set_level(uint8_t level)
 
     ESP_LOGI(TAG, "Brightness set to %d%%", level);
 }
+
+void lcd_off()
+{
+    // esp_lcd_panel_disp_on_off(panel_handle, false);
+    esp_lcd_panel_disp_sleep(panel_handle, true);
+    esp_lcd_touch_enter_sleep(touch_handle);
+}
