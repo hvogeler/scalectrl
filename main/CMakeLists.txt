@@ -11,6 +11,8 @@ idf_component_register(
       "ui/fonts/roboto_bold_40.c"      
       "ui/fonts/roboto_bold_60.c"      
       "ui/fonts/roboto_regular_20.c"      
+      "ui/controller/timer_ctrl.c"
+      "ui/controller/scale_ctrl.c"
       "scale/ble.c"
     INCLUDE_DIRS 
       "."

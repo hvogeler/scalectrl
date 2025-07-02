@@ -9,32 +9,11 @@
 #include "ui/view01.h"
 #include "scale/ble.h"
 #include "display/wavesharelcd2/battery.h"
+#include "ui/controller/timer_ctrl.h"
 
 static const char *TAG = "scalectrl";
-static int seconds = 0;
 
-void reset_cb()
-{
-    ESP_LOGI(TAG, "TIMER Pressed");
-    if (lvgl_port_lock(0))
-    {
-        seconds = 0;
-        set_timer(seconds);
-        scale_timer_reset();
-        scale_timer_on();
-        lvgl_port_unlock();
-    }
-}
 
-void tare_cb()
-{
-    ESP_LOGI(TAG, "TARE Pressed");
-    if (lvgl_port_lock(0))
-    {
-        scale_tare();
-        lvgl_port_unlock();
-    }
-}
 
 void collect_weight_task(void *params)
 {
@@ -53,30 +32,6 @@ void collect_weight_task(void *params)
     }
 }
 
-void timer_task(void *params)
-{
-    TickType_t xLastWakeTime;
-    const TickType_t xFrequency = pdMS_TO_TICKS(1000); // 1000ms = 1 second
-
-    // Initialize the xLastWakeTime variable with the current time
-    xLastWakeTime = xTaskGetTickCount();
-
-    while (1)
-    {
-        // Increment counter
-        seconds++;
-        if (is_on())
-        {
-            if (lvgl_port_lock(1000))
-            {
-                set_timer(seconds);
-                lvgl_port_unlock();
-            }
-        }
-        // Wait for the next cycle (1 second)
-        vTaskDelayUntil(&xLastWakeTime, xFrequency);
-    }
-}
 
 void check_battery_task(void *params)
 {
@@ -107,7 +62,7 @@ void app_main(void)
     bsp_brightness_set_level(80);
 
     // Create UI
-    make_widget_tree(reset_cb, tare_cb);
+    make_widget_tree();
     battery_init();
 
     // Start weight collection task

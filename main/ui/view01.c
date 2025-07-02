@@ -12,6 +12,8 @@
 #include "roboto_regular_20.h"
 #include "scale/ble.h"
 #include "display/wavesharelcd2/battery.h"
+#include "ui/controller/timer_ctrl.h"
+#include "ui/controller/scale_ctrl.h"
 
 static const char *TAG = "view01";
 void bt_connect_scale(void);
@@ -19,7 +21,7 @@ void disconnect_from_scale(void);
 
 static lv_obj_t *lbl_weight, *lbl_battery;
 static lv_obj_t *lbl_unit, *lbl_timer, *lbl_seconds;
-static lv_obj_t *btn_connect, *btn_tare, *btn_reset;
+static lv_obj_t *btn_connect, *btn_tare, *btn_timer;
 static lv_obj_t *lbl_connect, *lbl_tare, *lbl_reset;
 static lv_obj_t *img_battery;
 static lv_style_t style_pane, style_btn, style_weight;
@@ -60,7 +62,7 @@ void default_cb()
     ESP_LOGI(TAG, "Default CB");
 }
 
-void make_widget_tree(lv_event_cb_t reset_cb, lv_event_cb_t tare_cb)
+void make_widget_tree()
 {
     // setup screen
     lv_obj_t *screen = lv_scr_act();
@@ -80,12 +82,9 @@ void make_widget_tree(lv_event_cb_t reset_cb, lv_event_cb_t tare_cb)
     lv_style_set_border_width(&style_pane, 0);
     lv_style_set_flex_grow(&style_pane, 0);
     lv_style_set_pad_all(&style_pane, 0);
-    // lv_style_set_pad_gap(&style_pane, 0);
 
     // button style
     lv_style_init(&style_btn);
-    // lv_style_set_border_width(&style_btn, 10);
-    // lv_style_set_flex_grow(&style_btn, 0);
     lv_style_set_pad_all(&style_btn, 10);
     lv_style_set_pad_gap(&style_btn, 10);
     lv_style_set_margin_all(&style_btn, 0);
@@ -111,32 +110,6 @@ void make_widget_tree(lv_event_cb_t reset_cb, lv_event_cb_t tare_cb)
     lv_obj_set_flex_grow(data_pane, 6);
     lv_obj_set_style_bg_color(data_pane, lv_color_black(), LV_PART_MAIN);
     lv_obj_set_style_text_color(data_pane, lv_color_white(), LV_PART_MAIN);
-    // lv_obj_t *weight_pane = lv_obj_create(data_pane);
-    // lv_obj_set_width(weight_pane, LV_PCT(100));
-    // lv_obj_add_style(weight_pane, &style_pane, LV_PART_MAIN | LV_STATE_DEFAULT);
-    // lv_obj_set_layout(weight_pane, LV_LAYOUT_FLEX);
-    // lv_obj_set_flex_flow(weight_pane, LV_FLEX_FLOW_COLUMN);
-    // lv_obj_set_flex_align(weight_pane, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_END);
-    // lv_obj_set_style_bg_color(weight_pane, lv_color_black(), LV_PART_MAIN);
-    // lv_obj_set_style_text_color(weight_pane, lv_color_white(), LV_PART_MAIN);
-
-    // lv_obj_t *timer_pane = lv_obj_create(data_pane);
-    // lv_obj_set_width(timer_pane, LV_PCT(100));
-    // lv_obj_add_style(timer_pane, &style_pane, LV_PART_MAIN | LV_STATE_DEFAULT);
-    // lv_obj_set_layout(timer_pane, LV_LAYOUT_FLEX);
-    // lv_obj_set_flex_flow(timer_pane, LV_FLEX_FLOW_COLUMN);
-    // lv_obj_set_flex_align(timer_pane, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_END);
-    // lv_obj_set_style_bg_color(timer_pane, lv_color_black(), LV_PART_MAIN);
-    // lv_obj_set_style_text_color(timer_pane, lv_color_white(), LV_PART_MAIN);
-
-    // lv_obj_t *battery_pane = lv_obj_create(data_pane);
-    // lv_obj_set_width(battery_pane, LV_PCT(100));
-    // lv_obj_add_style(battery_pane, &style_pane, LV_PART_MAIN | LV_STATE_DEFAULT);
-    // lv_obj_set_layout(battery_pane, LV_LAYOUT_FLEX);
-    // lv_obj_set_flex_flow(battery_pane, LV_FLEX_FLOW_ROW);
-    // lv_obj_set_flex_align(battery_pane, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_END, LV_FLEX_ALIGN_END);
-    // lv_obj_set_style_bg_color(battery_pane, lv_color_black(), LV_PART_MAIN);
-    // lv_obj_set_style_text_color(battery_pane, lv_color_white(), LV_PART_MAIN);
 
     // buttons
     btn_connect = lv_button_create(buttons_pane);
@@ -148,7 +121,6 @@ void make_widget_tree(lv_event_cb_t reset_cb, lv_event_cb_t tare_cb)
     lv_obj_align(lbl_connect, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_text_font(lbl_connect, &roboto_regular_20, LV_PART_MAIN);
     lv_obj_set_flex_grow(btn_connect, 1);
-    // lv_obj_add_style(btn_connect, &style_btn, LV_PART_MAIN);
 
     btn_tare = lv_button_create(buttons_pane);
     lv_obj_add_event_cb(btn_tare, tare_cb, LV_EVENT_CLICKED, NULL);
@@ -160,47 +132,38 @@ void make_widget_tree(lv_event_cb_t reset_cb, lv_event_cb_t tare_cb)
     lv_obj_set_flex_grow(btn_tare, 1);
     lv_obj_add_style(btn_tare, &style_btn, LV_PART_MAIN);
 
-    btn_reset = lv_button_create(buttons_pane);
-    lv_obj_set_width(btn_reset, LV_PCT(100));
-    lv_obj_add_event_cb(btn_reset, reset_cb, LV_EVENT_CLICKED, NULL);
-    lbl_reset = lv_label_create(btn_reset);
+    btn_timer = lv_button_create(buttons_pane);
+    lv_obj_set_width(btn_timer, LV_PCT(100));
+    lv_obj_add_event_cb(btn_timer, timer_start_stop_cb, LV_EVENT_SHORT_CLICKED, NULL);
+    lv_obj_add_event_cb(btn_timer, timer_reset_cb, LV_EVENT_LONG_PRESSED, NULL);
+    lbl_reset = lv_label_create(btn_timer);
     lv_label_set_text(lbl_reset, "TIMER");
     lv_obj_align(lbl_reset, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_text_font(lbl_reset, &roboto_regular_20, LV_PART_MAIN);
-    lv_obj_set_flex_grow(btn_reset, 1);
-    // lv_obj_add_style(btn_reset, &style_btn, LV_PART_MAIN);
+    lv_obj_set_flex_grow(btn_timer, 1);
 
     // labels / fields
     // weight
     lbl_unit = lv_label_create(data_pane);
     lv_obj_add_flag(lbl_unit, LV_OBJ_FLAG_CLICKABLE);
-    // lv_obj_add_event_cb(lbl_unit, toggle_unit, LV_EVENT_CLICKED, NULL);
     lv_label_set_text(lbl_unit, "Gram");
-    // lv_obj_set_width(lbl_unit, LV_PCT(100));
-    // lv_obj_align(lbl_unit, LV_ALIGN_RIGHT_MID, LV_ALIGN_RIGHT_MID, LV_ALIGN_RIGHT_MID);
     lv_obj_set_style_text_font(lbl_unit, &roboto_regular_20, LV_PART_MAIN);
-        lv_obj_set_style_text_color(lbl_unit, lv_color_hex(0xbbbbbb), LV_PART_MAIN);
-
+    lv_obj_set_style_text_color(lbl_unit, lv_color_hex(0xbbbbbb), LV_PART_MAIN);
 
     lbl_weight = lv_label_create(data_pane);
     lv_obj_add_flag(lbl_weight, LV_OBJ_FLAG_CLICKABLE);
-    // lv_obj_add_event_cb(lbl_weight, toggle_unit, LV_EVENT_CLICKED, NULL);
     lv_label_set_text(lbl_weight, "0.0");
-    // lv_obj_align(lbl_weight, LV_ALIGN_RIGHT_MID, LV_ALIGN_RIGHT_MID, LV_ALIGN_BOTTOM_MID);
     lv_obj_set_style_text_font(lbl_weight, &roboto_bold_60, LV_PART_MAIN);
     lv_obj_set_style_margin_bottom(lbl_weight, 10, LV_PART_MAIN);
 
     // timer
     lbl_seconds = lv_label_create(data_pane);
     lv_label_set_text(lbl_seconds, "Seconds");
-    // lv_obj_align(lbl_seconds, LV_ALIGN_RIGHT_MID, 0, 0);
     lv_obj_set_style_text_font(lbl_seconds, &roboto_regular_20, LV_PART_MAIN);
-        lv_obj_set_style_text_color(lbl_seconds, lv_color_hex(0xbbbbbb), LV_PART_MAIN);
+    lv_obj_set_style_text_color(lbl_seconds, lv_color_hex(0xbbbbbb), LV_PART_MAIN);
 
     lbl_timer = lv_label_create(data_pane);
     lv_label_set_text(lbl_timer, "0");
-    // lv_obj_align(lbl_timer, LV_ALIGN_RIGHT_MID, 0, 0);
-    //  lv_obj_set_style_bg_color(lbl_timer, lv_color_hex(0x660000), LV_PART_MAIN);
     lv_obj_set_style_text_font(lbl_timer, &roboto_bold_40, LV_PART_MAIN);
     lv_obj_set_style_margin_bottom(lbl_timer, 10, LV_PART_MAIN);
 
@@ -268,9 +231,13 @@ void set_battery(float voltage)
 
 void set_timer(int seconds)
 {
-    // ESP_LOGI(TAG, "Set Timer to %d", seconds);
-    if (lbl_timer != NULL)
+    if (lvgl_port_lock(1000))
     {
-        lv_label_set_text_fmt(lbl_timer, "%d", seconds);
+        // ESP_LOGI(TAG, "Set Timer to %d", seconds);
+        if (lbl_timer != NULL)
+        {
+            lv_label_set_text_fmt(lbl_timer, "%d", seconds);
+        }
+        lvgl_port_unlock();
     }
 }
