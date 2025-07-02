@@ -10,45 +10,9 @@
 #include "scale/ble.h"
 #include "ui/controller/battery_ctrl.h"
 #include "ui/controller/timer_ctrl.h"
+#include "ui/controller/scale_ctrl.h"
 
 static const char *TAG = "scalectrl";
-
-
-
-void collect_weight_task(void *params)
-{
-    while (1)
-    {
-        vTaskDelay(pdMS_TO_TICKS(100));
-        if (is_on())
-        {
-            if (lvgl_port_lock(1))
-            {
-                int16_t weight10 = get_weight10();
-                set_weight(weight10);
-                lvgl_port_unlock();
-            }
-        }
-    }
-}
-
-
-void check_battery_task(void *params)
-{
-    while (1)
-    {
-        vTaskDelay(pdMS_TO_TICKS(10000));
-        if (lvgl_port_lock(1))
-        {
-            float voltage;
-            uint16_t adc_value;
-            battery_get_voltage(&voltage, &adc_value);
-            set_battery(voltage);
-            ESP_LOGI(TAG, "Battery: %.2f", voltage);
-            lvgl_port_unlock();
-        }
-    }
-}
 
 void app_main(void)
 {

@@ -1,18 +1,22 @@
+#include <math.h>
 #include "esp_adc/adc_oneshot.h"
 #include "esp_adc/adc_cali.h"
 #include "esp_adc/adc_cali_scheme.h"
 #include "esp_log.h"
-#include <math.h>
+#include "freertos/FreeRTOS.h"
+#include "ui/view01.h"
 
 #define BATTERY_ADC_SIZE 15
 #define EXAMPLE_BATTERY_ADC_CHANNEL ADC_CHANNEL_4
 #define EXAMPLE_ADC_ATTEN ADC_ATTEN_DB_12
 
-static const char *TAG = "battery";
+static const char *TAG = "battery_ctrl";
 
 adc_oneshot_unit_handle_t adc1_handle;
 adc_cali_handle_t adc1_cali_chan0_handle = NULL;
 bool do_calibration1_chan0;
+
+// static SemaphoreHandle_t battery_mutex = NULL; // not used because there is no state in this controller
 
 static bool example_adc_calibration_init(adc_unit_t unit, adc_channel_t channel, adc_atten_t atten, adc_cali_handle_t *out_handle)
 {
@@ -74,6 +78,11 @@ static bool example_adc_calibration_init(adc_unit_t unit, adc_channel_t channel,
 
 void battery_init(void)
 {
+    // As long as there is not state in this controller no need for mutex (hopefully)
+    // if (battery_mutex == NULL)
+    // {
+    //     battery_mutex = xSemaphoreCreateMutex();
+    // }
 
     adc_oneshot_unit_init_cfg_t init_config1 = {
         .unit_id = ADC_UNIT_1,
@@ -129,31 +138,36 @@ uint8_t mapBatVolt2Pct(float v)
 
 /**
  * Convert lithium battery voltage to percentage using sigmoid function
- * 
+ *
  * @param voltage: Battery voltage in volts (typically 3.0V to 4.2V)
  * @return: Battery percentage (0.0 to 100.0)
  */
-float voltage_to_percentage_sigmoid(float voltage) {
+float voltage_to_percentage_sigmoid(float voltage)
+{
     const float V_MIN = 3.0f;      // Minimum voltage (0%)
     const float V_MAX = 4.2f;      // Maximum voltage (100%)
     const float V_MID = 3.6f;      // Midpoint voltage (50%)
     const float steepness = 12.0f; // Controls curve steepness
-    
+
     // Sigmoid function: 1 / (1 + e^(-k*(x-x0)))
     float normalized = (voltage - V_MID) * steepness;
     float sigmoid = 1.0f / (1.0f + expf(-normalized));
-    
+
     // Scale to 0-100 percentage
     float percentage = sigmoid * 100.0f;
-    
+
     // Apply hard limits based on voltage range
-    if (voltage <= V_MIN) percentage = 0.0f;
-    if (voltage >= V_MAX) percentage = 100.0f;
-    
+    if (voltage <= V_MIN)
+        percentage = 0.0f;
+    if (voltage >= V_MAX)
+        percentage = 100.0f;
+
     // Clamp to 0-100 range (safety check)
-    if (percentage < 0.0f) percentage = 0.0f;
-    if (percentage > 100.0f) percentage = 100.0f;
-    
+    if (percentage < 0.0f)
+        percentage = 0.0f;
+    if (percentage > 100.0f)
+        percentage = 100.0f;
+
     return percentage;
 }
 
@@ -173,33 +187,15 @@ void battery_get_voltage(float *voltage, uint16_t *adc_value)
     }
 }
 
-// lv_obj_t *label_adc_raw;
-// lv_obj_t *label_voltage;
-
-// lv_timer_t *battery_timer = NULL;
-
-// static void battery_timer_callback(lv_timer_t *timer)
-// {
-//     char str_buffer[20];
-//     float voltage;
-//     uint16_t adc_value;
-//     bsp_battery_get_voltage(&voltage, &adc_value);
-//     lv_label_set_text_fmt(label_adc_raw, "%d", adc_value);
-//     sprintf(str_buffer, "%.1f", voltage);
-//     lv_label_set_text(label_voltage, str_buffer);
-// }
-
-// void lvgl_battery_ui_init(lv_obj_t *parent)
-// {
-//     lv_obj_t *list = lv_list_create(parent);
-//     lv_obj_set_size(list, lv_pct(100), lv_pct(100));
-
-//     lv_obj_t *list_item = lv_list_add_btn(list, NULL, "adc_value");
-//     label_adc_raw = lv_label_create(list_item);
-//     lv_label_set_text(label_adc_raw, "0");
-
-//     list_item = lv_list_add_btn(list, NULL, "voltage");
-//     label_voltage = lv_label_create(list_item);
-//     lv_label_set_text(label_voltage, "0.0");
-//     battery_timer = lv_timer_create(battery_timer_callback, 1000, NULL);
-// }
+void check_battery_task(void *params)
+{
+    while (1)
+    {
+        vTaskDelay(pdMS_TO_TICKS(10000));
+        float voltage;
+        uint16_t adc_value;
+        battery_get_voltage(&voltage, &adc_value);
+        set_battery(voltage);
+        // ESP_LOGI(TAG, "Battery: %.2f", voltage);
+    }
+}

@@ -1,17 +1,6 @@
 /*
- * SPDX-FileCopyrightText: 2021-2024 Espressif Systems (Shanghai) CO LTD
- *
- * SPDX-License-Identifier: Unlicense OR CC0-1.0
+ * This ble code should be closer to the scale_ctrl controller. But I keep is separate to make reuse easier
  */
-
-/****************************************************************************
- *
- * This demo showcases BLE GATT client. It can scan BLE devices and connect to one device.
- * Run the gatt_server demo, the client demo will automatically connect to the gatt_server demo.
- * Client demo will enable gatt_server's notify after connection. The two devices will then exchange
- * data.
- *
- ****************************************************************************/
 
 #include <stdint.h>
 #include <string.h>

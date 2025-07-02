@@ -194,9 +194,14 @@ void set_weight(int16_t weight)
     char str_weight[20];
     snprintf(str_weight, sizeof(str_weight), "%.1f", w);
     // ESP_LOGI(TAG, "Set Weight to %s", str_weight);
-    if (lbl_weight != NULL)
+    if (lvgl_port_lock(100))
     {
-        lv_label_set_text_fmt(lbl_weight, "%s", str_weight);
+
+        if (lbl_weight != NULL)
+        {
+            lv_label_set_text_fmt(lbl_weight, "%s", str_weight);
+        }
+        lvgl_port_unlock();
     }
 }
 
@@ -212,21 +217,25 @@ void set_battery(float voltage)
     char bat_percent[20];
     snprintf(bat_percent, sizeof(bat_percent), "%d %%", round_to_int(voltage_to_percentage_sigmoid(voltage)));
     // ESP_LOGI(TAG, "Set Battery percent to %s", percent);
-    if (lbl_battery != NULL)
+    if (lvgl_port_lock(1000))
     {
-        lv_image_set_src(img_battery, LV_SYMBOL_BATTERY_FULL);
-        int bat_percent = round_to_int(voltage_to_percentage_sigmoid(voltage));
-        lv_label_set_text_fmt(lbl_battery, "%d%%", bat_percent);
-        uint32_t color = 0x00aa00; // green
-        if (bat_percent < 40)
+        if (lbl_battery != NULL)
         {
-            color = 0x00aaaa;
+            lv_image_set_src(img_battery, LV_SYMBOL_BATTERY_FULL);
+            int bat_percent = round_to_int(voltage_to_percentage_sigmoid(voltage));
+            lv_label_set_text_fmt(lbl_battery, "%d%%", bat_percent);
+            uint32_t color = 0x00aa00; // green
+            if (bat_percent < 40)
+            {
+                color = 0x00aaaa;
+            }
+            if (bat_percent < 15)
+            {
+                color = 0xaa0000;
+            }
+            lv_obj_set_style_text_color(img_battery, lv_color_hex(color), LV_PART_MAIN);
         }
-        if (bat_percent < 15)
-        {
-            color = 0xaa0000;
-        }
-        lv_obj_set_style_text_color(img_battery, lv_color_hex(color), LV_PART_MAIN);
+        lvgl_port_unlock();
     }
 }
 
