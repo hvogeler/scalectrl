@@ -1,13 +1,10 @@
 #include <stdio.h>
 #include <string.h>
-#include "esp_timer.h"
 #include "esp_log.h"
 #include "esp_err.h"
-#include "esp_lcd_panel_io.h"
 #include "display/wavesharelcd2/display_init.h"
 #include "esp_lvgl_port.h"
 #include "ui/view01.h"
-#include "scale/ble.h"
 #include "ui/controller/battery_ctrl.h"
 #include "ui/controller/timer_ctrl.h"
 #include "ui/controller/scale_ctrl.h"
