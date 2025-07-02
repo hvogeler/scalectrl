@@ -33,7 +33,8 @@
     "stdio.h": "c",
     "freertos.h": "c",
     "esp_err.h": "c",
-    "string.h": "c"
+    "string.h": "c",
+    "timer_ctrl.h": "c"
   },
   "idf.flashType": "UART"
 }

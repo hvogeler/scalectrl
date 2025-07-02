@@ -91,6 +91,14 @@ void timer_task(void *params)
                 seconds++;
                 set_timer(seconds);
             }
+            if (seconds > 1800)
+            {
+                seconds = 0;
+                set_timer(seconds);
+                scale_timer_reset();
+                scale_timer_off();
+                timer_state = STOPPED;
+            }
             xSemaphoreGive(timer_mutex);
         }
         // Wait for the next cycle (1 second)

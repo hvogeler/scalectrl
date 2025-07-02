@@ -11,7 +11,7 @@
 #include "roboto_bold_60.h"
 #include "roboto_regular_20.h"
 #include "scale/ble.h"
-#include "display/wavesharelcd2/battery.h"
+#include "ui/controller/battery_ctrl.h"
 #include "ui/controller/timer_ctrl.h"
 #include "ui/controller/scale_ctrl.h"
 
@@ -110,6 +110,7 @@ void make_widget_tree()
     lv_obj_set_flex_grow(data_pane, 6);
     lv_obj_set_style_bg_color(data_pane, lv_color_black(), LV_PART_MAIN);
     lv_obj_set_style_text_color(data_pane, lv_color_white(), LV_PART_MAIN);
+    lv_obj_set_style_pad_all(data_pane, 5, LV_PART_MAIN);
 
     // buttons
     btn_connect = lv_button_create(buttons_pane);

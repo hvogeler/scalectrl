@@ -8,7 +8,7 @@
 #include "esp_lvgl_port.h"
 #include "ui/view01.h"
 #include "scale/ble.h"
-#include "display/wavesharelcd2/battery.h"
+#include "ui/controller/battery_ctrl.h"
 #include "ui/controller/timer_ctrl.h"
 
 static const char *TAG = "scalectrl";
@@ -69,7 +69,7 @@ void app_main(void)
     xTaskCreatePinnedToCore(collect_weight_task, "collect_weight_task", 1024 * 2, NULL, 5, NULL, 1);
 
     // Start timer task
-    xTaskCreatePinnedToCore(timer_task, "timer_task", 1024 * 2, NULL, 5, NULL, 1);
+    xTaskCreatePinnedToCore(timer_task, "timer_task", 1024 * 3, NULL, 5, NULL, 1);
 
     // Start battery task
     xTaskCreatePinnedToCore(check_battery_task, "check_battery_task", 1024 * 2, NULL, 5, NULL, 1);
