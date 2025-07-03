@@ -5,6 +5,7 @@
 #include "esp_lvgl_port.h"
 
 #include "esp_log.h"
+
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "roboto_bold_40.h"
@@ -14,6 +15,7 @@
 #include "ui/controller/battery_ctrl.h"
 #include "ui/controller/timer_ctrl.h"
 #include "ui/controller/scale_ctrl.h"
+#include "sdkconfig.h"
 
 static const char *TAG = "view01";
 void bt_connect_scale(void);
@@ -150,9 +152,9 @@ void make_widget_tree()
     lbl_unit = lv_label_create(data_pane);
     lv_obj_add_flag(lbl_unit, LV_OBJ_FLAG_CLICKABLE);
     lv_obj_add_event_cb(lbl_unit, tare_cb, LV_EVENT_CLICKED, NULL);
-    lv_label_set_text(lbl_unit, "Gram");
+    lv_label_set_text(lbl_unit, "Weight");
     lv_obj_set_style_text_font(lbl_unit, &roboto_regular_20, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl_unit, lv_color_hex(0xbbbbbb), LV_PART_MAIN);
+    lv_obj_set_style_text_color(lbl_unit, lv_color_hex(0xcccccc), LV_PART_MAIN);
 
     lbl_weight = lv_label_create(data_pane);
     lv_obj_add_flag(lbl_weight, LV_OBJ_FLAG_CLICKABLE);
@@ -163,12 +165,12 @@ void make_widget_tree()
 
     // timer
     lbl_seconds = lv_label_create(data_pane);
-    lv_label_set_text(lbl_seconds, "Seconds");
+    lv_label_set_text(lbl_seconds, "Timer");
     lv_obj_set_style_text_font(lbl_seconds, &roboto_regular_20, LV_PART_MAIN);
-    lv_obj_set_style_text_color(lbl_seconds, lv_color_hex(0xbbbbbb), LV_PART_MAIN);
+    lv_obj_set_style_text_color(lbl_seconds, lv_color_hex(0xcccccc), LV_PART_MAIN);
 
     lbl_timer = lv_label_create(data_pane);
-    lv_label_set_text(lbl_timer, "0");
+    lv_label_set_text(lbl_timer, "00:00");
     lv_obj_set_style_text_font(lbl_timer, &roboto_bold_40, LV_PART_MAIN);
     lv_obj_set_style_margin_bottom(lbl_timer, 10, LV_PART_MAIN);
 
@@ -181,7 +183,7 @@ void make_widget_tree()
     lv_obj_set_style_border_width(bat_widget, 0, LV_PART_MAIN);
 
     lbl_battery = lv_label_create(bat_widget);
-    lv_label_set_text(lbl_battery, "V0.9.0");
+    lv_label_set_text(lbl_battery, CONFIG_APP_PROJECT_VER);
     lv_obj_set_style_text_font(lbl_battery, &roboto_regular_20, LV_PART_MAIN);
     img_battery = lv_image_create(bat_widget);
     lv_image_set_src(img_battery, LV_SYMBOL_BATTERY_FULL);
@@ -250,7 +252,9 @@ void set_timer(int seconds)
         // ESP_LOGI(TAG, "Set Timer to %d", seconds);
         if (lbl_timer != NULL)
         {
-            lv_label_set_text_fmt(lbl_timer, "%d", seconds);
+            int minutes = seconds / 60;
+            int seconds_in_minute = seconds % 60;
+            lv_label_set_text_fmt(lbl_timer, "%02d:%02d", minutes, seconds_in_minute);
         }
         lvgl_port_unlock();
     }
