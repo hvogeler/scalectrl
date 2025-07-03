@@ -32,16 +32,6 @@ void app_main(void)
     esp_sleep_wakeup_cause_t wakeup_cause = esp_sleep_get_wakeup_cause();
     ESP_LOGI(TAG, "Wakeup Cause: %d", wakeup_cause);
 
-    //     gpio_config_t io_conf = {
-    //     .pin_bit_mask = (1ULL << 9),
-    //     .mode = GPIO_MODE_INPUT,           // or GPIO_MODE_OUTPUT
-    //     .pull_up_en = GPIO_PULLUP_ENABLE,  // Enable pull-up
-    //     .pull_down_en = GPIO_PULLDOWN_DISABLE,
-    //     .intr_type = GPIO_INTR_DISABLE,
-    // };
-    // gpio_config(&io_conf);
-    // ESP_ERROR_CHECK(esp_sleep_enable_ext0_wakeup(9, 0));
-
     // Start weight collection task
     xTaskCreatePinnedToCore(collect_weight_task, "collect_weight_task", 1024 * 2, NULL, 5, NULL, 1);
 
