@@ -4,10 +4,13 @@
 #include "esp_err.h"
 #include "display/wavesharelcd2/display_init.h"
 #include "esp_lvgl_port.h"
+#include "esp_sleep.h"
 #include "ui/view01.h"
 #include "ui/controller/battery_ctrl.h"
 #include "ui/controller/timer_ctrl.h"
 #include "ui/controller/scale_ctrl.h"
+
+#define CST816D_INT_PIN 5
 
 static const char *TAG = "scalectrl";
 
@@ -25,6 +28,9 @@ void app_main(void)
     // Create UI
     make_widget_tree();
     battery_init();
+
+    esp_sleep_wakeup_cause_t wakeup_cause = esp_sleep_get_wakeup_cause();
+    ESP_LOGI(TAG, "Wakeup Cause: %d", wakeup_cause);
 
     // Start weight collection task
     xTaskCreatePinnedToCore(collect_weight_task, "collect_weight_task", 1024 * 2, NULL, 5, NULL, 1);
