@@ -15,6 +15,8 @@ The "ON" button now displays "OFF".
 - Touch the "OFF" button briefly to disconnect the scale but leave it turned on.
 - Touch the "OFF" button longer and it will turn the device off AND put the scale in sleep mode.
 
+![Scale Remote Control](scratch/IMG_7487.jpeg)
+
 # Notes for programming on my MAC
 ## initialize shell for esp-idf:
 
