@@ -15,6 +15,13 @@ The "ON" button now displays "OFF".
 - Touch the "OFF" button briefly to disconnect the scale but leave it turned on.
 - Touch the "OFF" button longer and it will turn the device off AND put the scale in sleep mode.
 
+There is a little rechargable battery with a capacity of 2000mAh inside the case. This keeps the thing running for days if not for weeks.
+The Waveshare board provides charge logic. So the battery gets rechard as soon as the device is connected to USB-C.
+I would recommend a smaller battery like maybe 1000mAh.
+
+# This is a personal hobby work
+Please note that I built this device purely for my personal joy. I do not take any responsibility for it.
+
 ![Scale Remote Control](scratch/IMG_7487.jpeg)
 
 # Notes for programming on my MAC
