@@ -36,7 +36,8 @@
     "string.h": "c",
     "timer_ctrl.h": "c",
     "lvgl.h": "c",
-    "view01.h": "c"
+    "view01.h": "c",
+    "scale_ctrl.h": "c"
   },
   "idf.flashType": "UART"
 }
